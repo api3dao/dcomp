@@ -4,6 +4,8 @@
   "scripts": {
     "build": "hardhat --config hardhat.build.config.ts compile",
     "coverage": "hardhat coverage",
+    "deploy:humpy-comp:ethereum": "hardhat deploy --network ethereum --tags HumpyComp",
+    "deploy:humpy-comp:localhost": "hardhat deploy --network localhost --tags HumpyComp",
     "lint:eslint": "eslint . --ext .js,.ts",
     "lint:solhint": "solhint ./contracts/**/*.sol",
     "lint": "pnpm run prettier:check && pnpm run lint:eslint && pnpm run lint:solhint",
