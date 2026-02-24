@@ -1,0 +1,33 @@
+import '@nomicfoundation/hardhat-toolbox';
+import '@nomicfoundation/hardhat-verify';
+import 'dotenv/config';
+import 'hardhat-deploy';
+import type { HardhatUserConfig } from 'hardhat/config';
+
+const config: HardhatUserConfig = {
+  solidity: {
+    compilers: [
+      {
+        version: '0.8.17',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: '0.8.27',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+  },
+};
+
+// eslint-disable-next-line import/no-default-export
+export default config;
