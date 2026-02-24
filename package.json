@@ -1,5 +1,5 @@
 {
-  "name": "@api3/humpy-comp",
+  "name": "@api3/dcomp",
   "license": "MIT",
   "scripts": {
     "build": "hardhat --config hardhat.build.config.ts compile",
