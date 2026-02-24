@@ -32,7 +32,7 @@ const deployDComp: DeployFunction = async ({ deployments, ethers, network, getUn
 
   const deployment = await deployments.deploy('DComp', {
     from: deployer,
-    args: [ownerAddress, initialDelegatee],
+    args: [ownerAddress, initialDelegatee, []],
     log: true,
   });
 
