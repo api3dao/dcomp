@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 import type { DeployFunction } from 'hardhat-deploy/types';
 
-const deployHumpyComp: DeployFunction = async ({ deployments, ethers, network, getUnnamedAccounts }) => {
+const deployDComp: DeployFunction = async ({ deployments, ethers, network, getUnnamedAccounts }) => {
   if (!['ethereum', 'localhost', 'hardhat'].includes(network.name)) {
     throw new Error(
-      `HumpyComp deployment is supported on ethereum and local forks (localhost/hardhat), got ${network.name}`
+      `DComp deployment is supported on ethereum and local forks (localhost/hardhat), got ${network.name}`
     );
   }
 
@@ -21,7 +21,7 @@ const deployHumpyComp: DeployFunction = async ({ deployments, ethers, network, g
     throw new Error('No deployer account available');
   }
 
-  console.log(`Deploying HumpyComp with the account: ${deployer}`);
+  console.log(`Deploying dComp with the account: ${deployer}`);
 
   const ownerAddress = process.env.OWNER ?? deployer;
   const initialDelegatee = process.env.INITIAL_DELEGATEE;
@@ -30,17 +30,17 @@ const deployHumpyComp: DeployFunction = async ({ deployments, ethers, network, g
     throw new Error('Set INITIAL_DELEGATEE in environment');
   }
 
-  const deployment = await deployments.deploy('HumpyComp', {
+  const deployment = await deployments.deploy('DComp', {
     from: deployer,
     args: [ownerAddress, initialDelegatee],
     log: true,
   });
 
-  const humpyComp = await ethers.getContractAt('HumpyComp', deployment.address);
+  const dComp = await ethers.getContractAt('DComp', deployment.address);
 
-  console.log(`HumpyComp deployed at: ${deployment.address}`);
-  console.log(`Owner: ${await humpyComp.owner()}`);
-  console.log(`Initial delegatee: ${await humpyComp.delegatee()}`);
+  console.log(`dComp deployed at: ${deployment.address}`);
+  console.log(`Owner: ${await dComp.owner()}`);
+  console.log(`Initial delegatee: ${await dComp.delegatee()}`);
 
   if (network.name === 'ethereum') {
     console.log('Verify with:');
@@ -48,7 +48,7 @@ const deployHumpyComp: DeployFunction = async ({ deployments, ethers, network, g
   }
 };
 
-deployHumpyComp.tags = ['HumpyComp'];
+deployDComp.tags = ['DComp'];
 
 // eslint-disable-next-line import/no-default-export
-export default deployHumpyComp;
+export default deployDComp;
