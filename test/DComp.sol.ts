@@ -25,7 +25,7 @@ async function deploy() {
   const mockComp = await ethers.getContractAt('MockComp', COMP_ADDRESS, roles.deployer);
 
   const dCompFactory = await ethers.getContractFactory('DComp', roles.deployer);
-  const dComp = await dCompFactory.deploy(roles.owner.address, roles.delegateeA.address);
+  const dComp = await dCompFactory.deploy(roles.owner.address, roles.delegateeA.address, [roles.user.address]);
 
   const mintedAmount = ethers.parseEther('100');
   await mockComp.mint(roles.user.address, mintedAmount);
@@ -47,9 +47,16 @@ describe('DComp', function () {
 
     it('reverts if owner is zero', async function () {
       const { roles, dCompFactory } = await helpers.loadFixture(deploy);
-      await expect(dCompFactory.deploy(ethers.ZeroAddress, roles.delegateeA.address))
+      await expect(dCompFactory.deploy(ethers.ZeroAddress, roles.delegateeA.address, []))
         .to.be.revertedWithCustomError(dCompFactory, 'OwnableInvalidOwner')
         .withArgs(ethers.ZeroAddress);
+    });
+
+    it('seeds initial whitelisted depositors from constructor', async function () {
+      const { roles, dComp } = await helpers.loadFixture(deploy);
+
+      expect(await dComp.isDepositorWhitelisted(roles.user.address)).to.equal(true);
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(false);
     });
   });
 
@@ -95,6 +102,115 @@ describe('DComp', function () {
     it('reverts withdraw when wrapped balance is insufficient', async function () {
       const { roles, dComp } = await helpers.loadFixture(deploy);
       await expect(dComp.connect(roles.user).withdraw(1)).to.be.reverted;
+    });
+
+    it('reverts deposit for non-whitelisted caller', async function () {
+      const { roles, dComp, mockComp } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('1');
+
+      await mockComp.connect(roles.otherUser).approve(await dComp.getAddress(), amount);
+      await expect(dComp.connect(roles.otherUser).deposit(amount)).to.be.revertedWith('Caller is not whitelisted');
+      await expect(dComp.connect(roles.otherUser).depositFor(roles.otherUser.address, amount)).to.be.revertedWith(
+        'Caller is not whitelisted'
+      );
+    });
+
+    it('allows non-whitelisted user to withdraw funds', async function () {
+      const { roles, dComp, mockComp, mintedAmount } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('7');
+
+      await mockComp.connect(roles.user).approve(await dComp.getAddress(), amount);
+      await dComp.connect(roles.user).depositFor(roles.otherUser.address, amount);
+
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(false);
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+
+      await expect(dComp.connect(roles.otherUser).withdraw(amount))
+        .to.emit(dComp, 'Transfer')
+        .withArgs(roles.otherUser.address, ethers.ZeroAddress, amount);
+
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(0);
+      expect(await mockComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+      expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount - amount);
+    });
+
+    it('allows user to withdraw after being removed from whitelist', async function () {
+      const { roles, dComp, mockComp, mintedAmount } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('9');
+
+      await mockComp.connect(roles.user).approve(await dComp.getAddress(), amount);
+      await dComp.connect(roles.user).deposit(amount);
+
+      await expect(dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [false]))
+        .to.emit(dComp, 'DepositorWhitelistStatusUpdated')
+        .withArgs(roles.user.address, false);
+
+      expect(await dComp.isDepositorWhitelisted(roles.user.address)).to.equal(false);
+
+      await expect(dComp.connect(roles.user).withdraw(amount))
+        .to.emit(dComp, 'Transfer')
+        .withArgs(roles.user.address, ethers.ZeroAddress, amount);
+
+      expect(await dComp.balanceOf(roles.user.address)).to.equal(0);
+      expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount);
+    });
+
+    it('allows non-whitelisted recipient to withdraw transferred dCOMP', async function () {
+      const { roles, dComp, mockComp, mintedAmount } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('11');
+
+      await mockComp.connect(roles.user).approve(await dComp.getAddress(), amount);
+      await dComp.connect(roles.user).deposit(amount);
+
+      await dComp.connect(roles.user).transfer(roles.otherUser.address, amount);
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(false);
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+
+      await expect(dComp.connect(roles.otherUser).withdraw(amount))
+        .to.emit(dComp, 'Transfer')
+        .withArgs(roles.otherUser.address, ethers.ZeroAddress, amount);
+
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(0);
+      expect(await mockComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+      expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount - amount);
+    });
+  });
+
+  describe('depositor whitelist', function () {
+    it('owner updates whitelist and emits event on change', async function () {
+      const { roles, dComp } = await helpers.loadFixture(deploy);
+
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(false);
+
+      await expect(dComp.connect(roles.owner).updateWhitelistedDepositors([roles.otherUser.address], [true]))
+        .to.emit(dComp, 'DepositorWhitelistStatusUpdated')
+        .withArgs(roles.otherUser.address, true);
+
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(true);
+    });
+
+    it('reverts for no-op whitelist update', async function () {
+      const { roles, dComp } = await helpers.loadFixture(deploy);
+
+      await expect(
+        dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [true])
+      ).to.be.revertedWith('No change in whitelist status');
+    });
+
+    it('reverts whitelist update from non-owner', async function () {
+      const { roles, dComp } = await helpers.loadFixture(deploy);
+
+      await expect(dComp.connect(roles.user).updateWhitelistedDepositors([roles.otherUser.address], [true]))
+        .to.be.revertedWithCustomError(dComp, 'OwnableUnauthorizedAccount')
+        .withArgs(roles.user.address);
+    });
+
+    it('reverts on mismatched whitelist update array lengths', async function () {
+      const { roles, dComp } = await helpers.loadFixture(deploy);
+
+      await expect(
+        dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [true, false])
+      ).to.be.revertedWith('Mismatched array lengths');
     });
   });
 
