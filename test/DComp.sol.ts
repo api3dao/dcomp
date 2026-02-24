@@ -148,13 +148,12 @@ describe('DComp', function () {
       expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(true);
     });
 
-    it('does not emit event for no-op whitelist update', async function () {
+    it('reverts for no-op whitelist update', async function () {
       const { roles, dComp } = await helpers.loadFixture(deploy);
 
-      await expect(dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [true])).to.not.emit(
-        dComp,
-        'DepositorWhitelistStatusUpdated'
-      );
+      await expect(
+        dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [true])
+      ).to.be.revertedWith('No change in whitelist status');
     });
 
     it('reverts whitelist update from non-owner', async function () {

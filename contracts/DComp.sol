@@ -18,7 +18,9 @@ contract DComp is ERC20Wrapper, Ownable2Step {
         0xc00e94Cb662C3520282E6f5717214004A7f26888;
     IComp internal immutable comp = IComp(COMP_ADDRESS);
 
-    /// @notice Tracks which addresses are allowed to deposit/wrap COMP
+    /// @notice Tracks which addresses are allowed to deposit COMP.
+    /// @dev Withdrawals are never restricted by this whitelist, including when dCOMP is transferred,
+    /// when a depositor is later removed from the whitelist, or when COMP is deposited for another address via `depositFor`.
     mapping(address => bool) public isDepositorWhitelisted;
 
     /// @notice Emitted when an address whitelist status changes
@@ -40,7 +42,7 @@ contract DComp is ERC20Wrapper, Ownable2Step {
     /// @notice Constructs the dCOMP wrapper
     /// @param initialOwner Address of the initial owner
     /// @param initialDelegatee Address of the initial delegatee for COMP voting power
-    /// @param whitelistedDepositors Initial addresses allowed to deposit/wrap COMP
+    /// @param whitelistedDepositors Initial addresses allowed to deposit COMP
     constructor(
         address initialOwner,
         address initialDelegatee,
@@ -111,17 +113,20 @@ contract DComp is ERC20Wrapper, Ownable2Step {
         _setDelegatee(newDelegatee);
     }
 
-    /// @notice Updates whitelist status for a depositor and emits an event on change
+    /// @notice Updates whitelist status for a depositor
     /// @param account Address whose whitelist status is being updated
     /// @param isWhitelisted New whitelist status for the address
     function _setDepositorWhitelistStatus(
         address account,
         bool isWhitelisted
     ) internal {
-        if (isDepositorWhitelisted[account] != isWhitelisted) {
-            isDepositorWhitelisted[account] = isWhitelisted;
-            emit DepositorWhitelistStatusUpdated(account, isWhitelisted);
-        }
+        require(
+            isDepositorWhitelisted[account] != isWhitelisted,
+            "No change in whitelist status"
+        );
+
+        isDepositorWhitelisted[account] = isWhitelisted;
+        emit DepositorWhitelistStatusUpdated(account, isWhitelisted);
     }
 
     /// @notice Updates delegated voting power recipient for COMP held by this wrapper
