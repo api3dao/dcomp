@@ -133,6 +133,47 @@ describe('DComp', function () {
       expect(await mockComp.balanceOf(roles.otherUser.address)).to.equal(amount);
       expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount - amount);
     });
+
+    it('allows user to withdraw after being removed from whitelist', async function () {
+      const { roles, dComp, mockComp, mintedAmount } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('9');
+
+      await mockComp.connect(roles.user).approve(await dComp.getAddress(), amount);
+      await dComp.connect(roles.user).deposit(amount);
+
+      await expect(dComp.connect(roles.owner).updateWhitelistedDepositors([roles.user.address], [false]))
+        .to.emit(dComp, 'DepositorWhitelistStatusUpdated')
+        .withArgs(roles.user.address, false);
+
+      expect(await dComp.isDepositorWhitelisted(roles.user.address)).to.equal(false);
+
+      await expect(dComp.connect(roles.user).withdraw(amount))
+        .to.emit(dComp, 'Transfer')
+        .withArgs(roles.user.address, ethers.ZeroAddress, amount);
+
+      expect(await dComp.balanceOf(roles.user.address)).to.equal(0);
+      expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount);
+    });
+
+    it('allows non-whitelisted recipient to withdraw transferred dCOMP', async function () {
+      const { roles, dComp, mockComp, mintedAmount } = await helpers.loadFixture(deploy);
+      const amount = ethers.parseEther('11');
+
+      await mockComp.connect(roles.user).approve(await dComp.getAddress(), amount);
+      await dComp.connect(roles.user).deposit(amount);
+
+      await dComp.connect(roles.user).transfer(roles.otherUser.address, amount);
+      expect(await dComp.isDepositorWhitelisted(roles.otherUser.address)).to.equal(false);
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+
+      await expect(dComp.connect(roles.otherUser).withdraw(amount))
+        .to.emit(dComp, 'Transfer')
+        .withArgs(roles.otherUser.address, ethers.ZeroAddress, amount);
+
+      expect(await dComp.balanceOf(roles.otherUser.address)).to.equal(0);
+      expect(await mockComp.balanceOf(roles.otherUser.address)).to.equal(amount);
+      expect(await mockComp.balanceOf(roles.user.address)).to.equal(mintedAmount - amount);
+    });
   });
 
   describe('depositor whitelist', function () {
