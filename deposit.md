@@ -36,3 +36,31 @@
      - onBehalf: your wallet address
      - data: `0x`
    - Click "Write" and submit the transaction.
+
+## Wrap COMP to dCOMP
+
+Note: dCOMP minting is only enabled for whitelisted wallet addresses.
+
+1. Approve COMP
+   - In browser go to [COMP contract on Etherscan](https://etherscan.io/address/0xc00e94Cb662C3520282E6f5717214004A7f26888#writeContract) and open "Write Contract" tab.
+   - Click on "Connect to Web3" to connect your wallet.
+   - Click on "approve (0x095ea7b3)", enter `0x91d14789071e5E195FFC9F745348736677De3292` (dCOMP address) as spender and a value (COMP amount) to approve. COMP has 18 decimals, so the value needs to be scaled by 10^18, i.e. 1.000.000.000.000.000.000 is 1 COMP.
+   - Click "Write" and submit the transaction.
+2. Mint dCOMP
+   - In browser go to [dCOMP contract on Etherscan](https://etherscan.io/address/0x91d14789071e5E195FFC9F745348736677De3292#writeContract) and open "Write Contract" tab.
+   - Click on "Connect to Web3" to connect your wallet.
+   - Click on "deposit (0xb6b55f25)" and enter the amount of COMP to deposit (scaled by 10^18).
+   - Click "Write" and submit the transaction.
+
+## Borrow USDC against dCOMP
+
+- In browser go to [dCOMP/USDC market in Morpho app](https://app.morpho.org/ethereum/market/0x24852d8d7464402ddcd717415e009d42bf7427d6a8893487f83c75ee0f4a0ea6/dcomp-usdc).
+- Enter amount of dCOMP as collateral and amount of USDC to borrow.
+- Click "Supply collateral & borrow" button below.
+
+## Unwrap dCOMP to COMP
+
+- In browser go to [dCOMP contract on Etherscan](https://etherscan.io/address/0x91d14789071e5E195FFC9F745348736677De3292#writeContract) and open "Write Contract" tab.
+- Click on "Connect to Web3" to connect your wallet.
+- Click on "withdraw (0x2e1a7d4d)" and enter the amount of COMP to withdraw (scaled by 10^18).
+- Click "Write" and submit the transaction.
